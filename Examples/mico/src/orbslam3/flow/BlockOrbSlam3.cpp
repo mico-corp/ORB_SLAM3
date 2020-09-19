@@ -29,7 +29,7 @@ namespace mico{
         
         createPolicy({    {"image", "image"} });
 
-
+        createPipe("pose", "mat44");
         
         registerCallback({  "image" }, 
                                 [this](flow::DataFlow _data){
@@ -37,6 +37,13 @@ namespace mico{
                                 });
 
     }
+
+    BlockOrbSlam3::~BlockOrbSlam3(){
+        if(slam_ != nullptr){
+            slam_->Shutdown();
+        }
+    }
+
 
 
     bool BlockOrbSlam3::configure(std::unordered_map<std::string, std::string> _params){
@@ -59,7 +66,6 @@ namespace mico{
         t0_ = std::chrono::high_resolution_clock::now();
 
         return true;
-
     }
     
     std::vector<std::string> BlockOrbSlam3::parameters(){
@@ -76,7 +82,16 @@ namespace mico{
                     cv::Mat image = _data.get<cv::Mat>("image");
                     auto t1 = std::chrono::high_resolution_clock::now();
                     float incT = std::chrono::duration_cast<std::chrono::milliseconds>(t1-t0_).count();
-                    slam_->TrackMonocular(image, incT/1000.0f);
+                    cv::Mat result = slam_->TrackMonocular(image, incT/1000.0f);
+                    Eigen::Matrix4f pose;
+                    for(unsigned i = 0; i<4; i++;){
+                        for(unsigned j = 0; j<4; j++){
+                            pose(i,j) = result.at<float>(i,j);
+                        }
+                    }
+                    if(getPipe("pose")->registrations()){
+                        getPipe("pose")->flush(pose);
+                    }
                 }catch(std::exception& e){
                     std::cout << "Failure OdometryRGBD. " <<  e.what() << std::endl;
                     idle_ = true;

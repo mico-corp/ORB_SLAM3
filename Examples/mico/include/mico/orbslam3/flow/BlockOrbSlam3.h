@@ -34,6 +34,7 @@ namespace mico{
         virtual std::string name() const override {return "OrbSlam3";}
 
         BlockOrbSlam3();
+        ~BlockOrbSlam3();
 
         bool configure(std::unordered_map<std::string, std::string> _params) override;
         std::vector<std::string> parameters() override;
