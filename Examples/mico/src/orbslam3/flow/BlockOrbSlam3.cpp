@@ -84,7 +84,7 @@ namespace mico{
                     float incT = std::chrono::duration_cast<std::chrono::milliseconds>(t1-t0_).count();
                     cv::Mat result = slam_->TrackMonocular(image, incT/1000.0f);
                     Eigen::Matrix4f pose;
-                    for(unsigned i = 0; i<4; i++;){
+                    for(unsigned i = 0; i<4; i++){
                         for(unsigned j = 0; j<4; j++){
                             pose(i,j) = result.at<float>(i,j);
                         }
