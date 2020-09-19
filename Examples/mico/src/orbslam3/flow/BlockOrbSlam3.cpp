@@ -61,7 +61,7 @@ namespace mico{
             return false;
         }
 
-        slam_ = new ORB_SLAM3::System(vocabFile, configFile, ORB_SLAM3::System::MONOCULAR, true);
+        slam_ = new ORB_SLAM3::System(vocabFile, configFile, ORB_SLAM3::System::MONOCULAR, false);
         configured_ = true;
         t0_ = std::chrono::high_resolution_clock::now();
 
@@ -83,13 +83,18 @@ namespace mico{
                     auto t1 = std::chrono::high_resolution_clock::now();
                     float incT = std::chrono::duration_cast<std::chrono::milliseconds>(t1-t0_).count();
                     cv::Mat result = slam_->TrackMonocular(image, incT/1000.0f);
-                    Eigen::Matrix4f pose;
-                    for(unsigned i = 0; i<4; i++){
-                        for(unsigned j = 0; j<4; j++){
-                            pose(i,j) = result.at<float>(i,j);
-                        }
-                    }
                     if(getPipe("pose")->registrations()){
+                        Eigen::Matrix4f pose;
+                        if(result.empty()){
+                            pose = Eigen::Matrix4f::Identity();
+                        }else{
+                            for(unsigned i = 0; i<4; i++){
+                                for(unsigned j = 0; j<4; j++){
+                                    pose(i,j) = result.at<float>(i,j);
+                                }
+                            }
+                        }
+                        
                         getPipe("pose")->flush(pose);
                     }
                 }catch(std::exception& e){
