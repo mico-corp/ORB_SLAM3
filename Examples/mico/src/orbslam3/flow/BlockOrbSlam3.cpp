@@ -52,9 +52,9 @@ namespace mico{
         slamSelector_ = new QComboBox();
         slamSelector_->addItem("Monocular");
         slamSelector_->addItem("Stereo");
-        slamSelector_->addItem("RGBD");
-        slamSelector_->addItem("Mono-Inertial");
-        slamSelector_->addItem("Stereo-Inertial");
+        // slamSelector_->addItem("RGBD");
+        // slamSelector_->addItem("Mono-Inertial");
+        // slamSelector_->addItem("Stereo-Inertial");
         
         QObject::connect(slamSelector_, &QComboBox::currentTextChanged, [&](const QString &_text){
             type_ = parseType(_text.toStdString());
@@ -99,10 +99,21 @@ namespace mico{
             if(configured_){
                 // Eigen::Matrix4f pose = Eigen::Matrix4f::Identity();
                 try{
-                    cv::Mat image = _data.get<cv::Mat>("image");
                     auto t1 = std::chrono::high_resolution_clock::now();
+
+
                     float incT = std::chrono::duration_cast<std::chrono::milliseconds>(t1-t0_).count();
-                    cv::Mat result = slam_->TrackMonocular(image, incT/1000.0f);
+                    cv::Mat result;
+                    
+                    if(type_ == eSlamType::MONOCULAR){
+                        cv::Mat image = _data.get<cv::Mat>("image");
+                        result = slam_->TrackMonocular(image, incT/1000.0f);
+                    } else if(type_ == eSlamType::STEREO){
+                        cv::Mat left = _data.get<cv::Mat>("left");
+                        cv::Mat right = _data.get<cv::Mat>("right");
+                        result = slam_->TrackStereo(left, right, incT);
+                    }
+                    
                     if(getPipe("pose")->registrations()){
                         Eigen::Matrix4f pose;
                         if(result.empty()){
