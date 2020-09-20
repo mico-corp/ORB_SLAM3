@@ -23,15 +23,18 @@
 #include <flow/Policy.h>
 #include <flow/Outpipe.h>
 
+#include <QVBoxLayout>
+#include <QComboBox>
+
 namespace mico{
 
     BlockOrbSlam3::BlockOrbSlam3(){
         
-        createPolicy({    {"image", "image"} });
+        createPolicy({ {"image", "image"} });
 
         createPipe("pose", "mat44");
         
-        registerCallback({  "image" }, 
+        registerCallback({ "image" }, 
                                 [this](flow::DataFlow _data){
                                     this->callbackOdometry(_data);
                                 });
@@ -44,7 +47,24 @@ namespace mico{
         }
     }
 
+    QBoxLayout * BlockOrbSlam3::creationWidget() { 
+        layout_ = new QVBoxLayout;
+        slamSelector_ = new QComboBox();
+        slamSelector_->addItem("Monocular");
+        slamSelector_->addItem("Stereo");
+        slamSelector_->addItem("RGBD");
+        slamSelector_->addItem("Mono-Inertial");
+        slamSelector_->addItem("Stereo-Inertial");
+        
+        QObject::connect(slamSelector_, &QComboBox::currentTextChanged, [&](const QString &_text){
+            type_ = parseType(_text.toStdString());
+            this->preparePolicy();
+        });
 
+        layout_->addWidget(slamSelector_);
+
+        return layout_; 
+    };       
 
     bool BlockOrbSlam3::configure(std::unordered_map<std::string, std::string> _params){
         std::string configFile = "";
@@ -110,4 +130,40 @@ namespace mico{
         }
     }
 
+
+    BlockOrbSlam3::eSlamType BlockOrbSlam3::parseType(const std::string &_type){
+        if(_type == "Monocular"){
+            return eSlamType::MONOCULAR;
+        }else if(_type == "RGBD"){
+            return eSlamType::RGBD;
+        }else if(_type == "Stereo"){
+            return eSlamType::STEREO;
+        }else if(_type == "Mono-Inertial"){
+            return eSlamType::MONO_INER;
+        }else if(_type == "Stereo-Inertial"){
+            return eSlamType::STEREO_INER;
+        }
+
+        return eSlamType::MONOCULAR;
+    }
+
+    void BlockOrbSlam3::preparePolicy(){
+        removePolicy();
+        flow::Policy::PolicyMask mask;
+
+        if(type_ == eSlamType::MONOCULAR){
+            createPolicy({{"image", "image"}});
+            mask = {"image"};
+        }else if(type_ == eSlamType::STEREO){
+            createPolicy({{"left", "image"}, {"right", "image"}});
+            mask = {"left", "right"};
+        }else{
+            return;
+        }
+
+        registerCallback(   mask, 
+                            [&](flow::DataFlow  _data){
+                                this->callbackOdometry(_data);
+                            });
+    }
 }

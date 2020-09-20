@@ -27,14 +27,20 @@
 #include <System.h>
 #include <chrono>
 
+class QBoxLayout;
+class QComboBox;
+
 namespace mico{
 
     class BlockOrbSlam3: public flow::Block{
     public:
+        enum eSlamType {MONOCULAR, RGBD, STEREO, MONO_INER, STEREO_INER};
         virtual std::string name() const override {return "OrbSlam3";}
 
         BlockOrbSlam3();
         ~BlockOrbSlam3();
+
+        QBoxLayout * creationWidget() override;        
 
         bool configure(std::unordered_map<std::string, std::string> _params) override;
         std::vector<std::string> parameters() override;
@@ -45,12 +51,19 @@ namespace mico{
 
     private:
         void callbackOdometry(flow::DataFlow _data);
-
+        eSlamType parseType(const std::string &_type);
+        void preparePolicy();
+        
     private:
         bool idle_ = true;
         bool configured_ = false;
         ORB_SLAM3::System *slam_;
         std::chrono::time_point<std::chrono::high_resolution_clock> t0_;
+
+        QBoxLayout *layout_;
+        QComboBox *slamSelector_;
+
+        eSlamType type_;
     };
 
 }
