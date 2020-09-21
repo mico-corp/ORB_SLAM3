@@ -29,6 +29,7 @@
 #include <vector>
 #include <mutex>
 
+
 class QBoxLayout;
 class QComboBox;
 
@@ -50,6 +51,8 @@ namespace mico{
         std::string description() const override {return    "Block for visual odometry using ORBSLAM3.\n"
                                                             "   - Inputs: \n"
                                                             "   - Outputs: \n";};
+
+        QIcon icon() const override {return QIcon("/usr/share/icons/Humanity/emblems/48/emblem-cool.svg");};
 
     private:
         void callbackOdometry(flow::DataFlow _data);
