@@ -26,6 +26,8 @@
 #include <flow/Block.h>
 #include <System.h>
 #include <chrono>
+#include <vector>
+#include <mutex>
 
 class QBoxLayout;
 class QComboBox;
@@ -57,13 +59,16 @@ namespace mico{
     private:
         bool idle_ = true;
         bool configured_ = false;
-        ORB_SLAM3::System *slam_;
+        ORB_SLAM3::System *slam_ = nullptr;
+        std::vector<ORB_SLAM3::IMU::Point>  vImu_;
+        std::mutex dataLock_;
         std::chrono::time_point<std::chrono::high_resolution_clock> t0_;
 
         QBoxLayout *layout_;
         QComboBox *slamSelector_;
 
-        eSlamType type_;
+        eSlamType type_ = eSlamType::MONOCULAR;
+        
     };
 
 }

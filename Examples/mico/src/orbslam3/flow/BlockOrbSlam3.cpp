@@ -29,16 +29,8 @@
 namespace mico{
 
     BlockOrbSlam3::BlockOrbSlam3(){
-        
-        createPolicy({ {"image", "image"} });
-
         createPipe("pose", "mat44");
-        
-        registerCallback({ "image" }, 
-                                [this](flow::DataFlow _data){
-                                    this->callbackOdometry(_data);
-                                });
-
+        this->preparePolicy();
     }
 
     BlockOrbSlam3::~BlockOrbSlam3(){
@@ -52,9 +44,9 @@ namespace mico{
         slamSelector_ = new QComboBox();
         slamSelector_->addItem("Monocular");
         slamSelector_->addItem("Stereo");
-        // slamSelector_->addItem("RGBD");
-        // slamSelector_->addItem("Mono-Inertial");
-        // slamSelector_->addItem("Stereo-Inertial");
+        slamSelector_->addItem("Mono-Inertial");
+        slamSelector_->addItem("RGBD");
+        slamSelector_->addItem("Stereo-Inertial");
         
         QObject::connect(slamSelector_, &QComboBox::currentTextChanged, [&](const QString &_text){
             type_ = parseType(_text.toStdString());
@@ -105,6 +97,11 @@ namespace mico{
                     float incT = std::chrono::duration_cast<std::chrono::milliseconds>(t1-t0_).count();
                     cv::Mat result;
                     
+                    dataLock_.lock();
+                    auto vImu = vImu_;
+                    vImu_.clear();
+                    dataLock_.unlock();
+
                     if(type_ == eSlamType::MONOCULAR){
                         cv::Mat image = _data.get<cv::Mat>("image");
                         result = slam_->TrackMonocular(image, incT/1000.0f);
@@ -112,6 +109,17 @@ namespace mico{
                         cv::Mat left = _data.get<cv::Mat>("left");
                         cv::Mat right = _data.get<cv::Mat>("right");
                         result = slam_->TrackStereo(left, right, incT);
+                    } else if(type_ == eSlamType::RGBD){
+                        cv::Mat image = _data.get<cv::Mat>("image");
+                        cv::Mat depth = _data.get<cv::Mat>("depth");
+                        result = slam_->TrackRGBD(image, depth, incT);
+                    } else if(type_ == eSlamType::MONO_INER){
+                        cv::Mat image = _data.get<cv::Mat>("image");
+                        result = slam_->TrackMonocular(image, incT, vImu);
+                    } else if(type_ == eSlamType::STEREO_INER){
+                        cv::Mat left = _data.get<cv::Mat>("left");
+                        cv::Mat right = _data.get<cv::Mat>("right");
+                        result = slam_->TrackStereo(left, right, incT, vImu_);
                     }
                     
                     if(getPipe("pose")->registrations()){
@@ -141,7 +149,6 @@ namespace mico{
         }
     }
 
-
     BlockOrbSlam3::eSlamType BlockOrbSlam3::parseType(const std::string &_type){
         if(_type == "Monocular"){
             return eSlamType::MONOCULAR;
@@ -168,6 +175,15 @@ namespace mico{
         }else if(type_ == eSlamType::STEREO){
             createPolicy({{"left", "image"}, {"right", "image"}});
             mask = {"left", "right"};
+        }else if(type_ == eSlamType::RGBD){
+            createPolicy({{"image", "image"}, {"depth", "image"}});
+            mask = {"image", "depth"};
+        }else if(type_ == eSlamType::MONO_INER){   
+           createPolicy({{"image", "image"}, {"acc", "vec3"}, {"gyro", "vec3"}});
+           mask = {"image", "acc", "gyro"};
+        }else if(type_ == eSlamType::STEREO_INER){   
+           createPolicy({{"left", "image"}, {"right", "image"}, {"acc", "vec3"}, {"gyro", "vec3"}});
+           mask = {"left", "right"};
         }else{
             return;
         }
@@ -176,5 +192,22 @@ namespace mico{
                             [&](flow::DataFlow  _data){
                                 this->callbackOdometry(_data);
                             });
+
+        if(type_ == eSlamType::MONO_INER || type_ == eSlamType::STEREO_INER){
+            registerCallback(   {"acc", "gyro"}, 
+                            [&](flow::DataFlow  _data){
+                                dataLock_.lock();
+                                auto t1 = std::chrono::high_resolution_clock::now();
+                                float incT = std::chrono::duration_cast<std::chrono::milliseconds>(t1-t0_).count();            
+                                Eigen::Vector3f acc = _data.get<Eigen::Vector3f>("acc");
+                                Eigen::Vector3f gyro = _data.get<Eigen::Vector3f>("gyro");
+
+                                ORB_SLAM3::IMU::Point data(  acc[0], acc[1], acc[2],
+                                                            gyro[0], gyro[1], gyro[2],
+                                                            incT);
+                                vImu_.push_back(data);
+                                dataLock_.unlock();
+                            });
+        }
     }
 }
