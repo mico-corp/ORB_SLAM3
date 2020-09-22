@@ -46,7 +46,7 @@ namespace mico{
         QBoxLayout * creationWidget() override;        
 
         bool configure(std::unordered_map<std::string, std::string> _params) override;
-        std::vector<std::string> parameters() override;
+        std::vector<std::pair<std::string, flow::Block::eParameterType>> parameters() override;
 
         std::string description() const override {return    "Block for visual odometry using ORBSLAM3.\n"
                                                             "   - Inputs: \n"
@@ -62,7 +62,10 @@ namespace mico{
     private:
         bool idle_ = true;
         bool configured_ = false;
+        bool visualize_ = false;
+
         ORB_SLAM3::System *slam_ = nullptr;
+
         std::vector<ORB_SLAM3::IMU::Point>  vImu_;
         std::mutex dataLock_;
         std::chrono::time_point<std::chrono::high_resolution_clock> t0_;

@@ -66,6 +66,8 @@ namespace mico{
                 vocabFile = param.second;
             }else if(param.first == "configuration" && param.second != ""){
                 configFile = param.second;
+            }else if(param.first == "visualize" && param.second != ""){
+                visualize_ = param.second == "1"?true: false;
             }
         }
 
@@ -73,15 +75,17 @@ namespace mico{
             return false;
         }
 
-        slam_ = new ORB_SLAM3::System(vocabFile, configFile, ORB_SLAM3::System::MONOCULAR, false);
+        slam_ = new ORB_SLAM3::System(vocabFile, configFile, ORB_SLAM3::System::MONOCULAR, visualize_);
         configured_ = true;
         t0_ = std::chrono::high_resolution_clock::now();
 
         return true;
     }
     
-    std::vector<std::string> BlockOrbSlam3::parameters(){
-        return {"vocabulary", "configuration"};
+    std::vector<std::pair<std::string, flow::Block::eParameterType>> BlockOrbSlam3::parameters(){
+        return {    {"vocabulary", flow::Block::eParameterType::STRING},
+                    {"configuration", flow::Block::eParameterType::STRING},
+                    {"visualize", flow::Block::eParameterType::BOOLEAN}};
     }
 
 
